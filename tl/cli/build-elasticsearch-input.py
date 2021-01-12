@@ -31,6 +31,12 @@ def add_arguments(parser):
     parser.add_argument('--pagerank-properties', action='store', type=str, dest='pagerank_properties', default=None,
                         help='the name of property which has pagerank for the node1')
 
+    parser.add_argument('--wikitable-anchor-field', action='store', type=str, dest='wikitable_anchor_field', default=None,
+                        help='the name of property which has pagerank for the node1')
+
+    parser.add_argument('--wikipedia-anchor-field', action='store', type=str, dest='wikipedia_anchor_field', default=None,
+                        help='the name of property which has pagerank for the node1')
+
     parser.add_argument('--mapping-file', action='store', dest='mapping_file_path', required=True,
                         help='path where a mapping file for the ES index will be output')
 
@@ -65,6 +71,8 @@ def run(**kwargs):
                                          kwargs['mapping_file_path'], kwargs['output_file_path'],
                                          alias_fields=kwargs['alias_properties'],
                                          pagerank_fields=kwargs['pagerank_properties'],
+                                         wikitable_anchor_field=kwargs['wikitable_anchor_field'],
+                                         wikipedia_anchor_field=kwargs['wikipedia_anchor_field'],
                                          black_list_file_path=kwargs['blacklist_file_path'],
                                          extra_info=kwargs['extra_information'],
                                          description_properties=kwargs['description_properties'],

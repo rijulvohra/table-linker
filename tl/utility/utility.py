@@ -11,6 +11,7 @@ import pprint
 from collections import defaultdict
 from tl.exceptions import FileNotExistError, UploadError
 from requests.auth import HTTPBasicAuth
+import time
 
 
 class Utility(object):
@@ -18,6 +19,8 @@ class Utility(object):
     def build_elasticsearch_file(kgtk_file_path, label_fields,
                                  mapping_file_path, output_path,
                                  alias_fields=None, pagerank_fields=None,
+                                 wikitable_anchor_field=None,
+                                 wikipedia_anchor_field=None,
                                  black_list_file_path=None,
                                  extra_info=False,
                                  add_text=False,
@@ -60,6 +63,8 @@ class Utility(object):
         aliases = alias_fields.split(',') if alias_fields else []
         pagerank = pagerank_fields.split(',') if pagerank_fields else []
         descriptions = description_properties.split(',') if description_properties else []
+        wikitable_anchor_text = wikitable_anchor_field.split(',') if wikitable_anchor_field else []
+        wikipedia_anchor_text = wikipedia_anchor_field.split(',') if wikipedia_anchor_field else []
         mapping_parameter_dict['str_fields_need_index'] = ['id', 'labels']
         if len(aliases):
             mapping_parameter_dict['str_fields_need_index'].append('aliases')
@@ -84,6 +89,8 @@ class Utility(object):
         _labels = dict()
         _aliases = dict()
         _descriptions = dict()
+        _wikitable_anchor_text = dict()
+        _wikipedia_anchor_text = dict()
         all_langs = set()
         lang = 'en'
 
@@ -96,8 +103,11 @@ class Utility(object):
 
         column_header_dict = None
         try:
+            st = time.time()
             for line in kgtk_file:
                 i += 1
+                if i%100000 == 0:
+                    print("Time Taken to process {} lines is {}".format(i,time.time() - st))
                 if i % 1000000 == 0:
                     print('Processed {} lines...'.format(i))
                 if isinstance(line, bytes):
@@ -126,6 +136,8 @@ class Utility(object):
                         if node1 != prev_node:
                             skipped_node_count = Utility._write_one_node(_labels=_labels, _aliases=_aliases,
                                                                          _pagerank=_pagerank,
+                                                                         _wikitable_anchor_text = _wikitable_anchor_text,
+                                                                         _wikipedia_anchor_text = _wikipedia_anchor_text,
                                                                          black_list_dict=black_list_dict,
                                                                          current_node_info=current_node_info,
                                                                          is_human_name=is_human_name,
@@ -158,7 +170,7 @@ class Utility(object):
 
                             if tmp_val.strip() != '':
                                 _labels[lang].add(tmp_val)
-                        elif vals[label_id] in aliases:
+                        elif vals[label_id] in aliases or vals[label_id] == 'abbreviated_name':
                             if separate_languages:
                                 tmp_val, lang = Utility.separate_language_text_tag(vals[node2_id])
                             else:
@@ -184,12 +196,36 @@ class Utility(object):
                             if tmp_val.strip() != '':
                                 _descriptions[lang].add(tmp_val)
 
+                        elif vals[label_id] in wikitable_anchor_text:
+                            if separate_languages:
+                                tmp_val, lang = Utility.separate_language_text_tag(vals[node2_id])
+                            else:
+                                tmp_val = Utility.remove_language_tag(vals[node2_id])
+                            if lang not in _wikitable_anchor_text:
+                                _wikitable_anchor_text[lang] = set()
+                                all_langs.add(lang)
+                            if tmp_val.strip() != '':
+                                _wikitable_anchor_text[lang].add(tmp_val)
+
+                        elif vals[label_id] in wikipedia_anchor_text:
+                            if separate_languages:
+                                tmp_val, lang = Utility.separate_language_text_tag(vals[node2_id])
+                            else:
+                                tmp_val = Utility.remove_language_tag(vals[node2_id])
+                            if lang not in _wikipedia_anchor_text:
+                                _wikipedia_anchor_text[lang] = set()
+                                all_langs.add(lang)
+                            if tmp_val.strip() != '':
+                                _wikipedia_anchor_text[lang].add(tmp_val)
+
                         # if it is human
                         if vals[node2_id] in human_nodes_set:
                             is_human_name = True
 
             # do one more write for last node
             skipped_node_count = Utility._write_one_node(_labels=_labels, _aliases=_aliases, _pagerank=_pagerank,
+                                                         _wikitable_anchor_text = _wikitable_anchor_text,
+                                                         _wikipedia_anchor_text = _wikipedia_anchor_text,
                                                          black_list_dict=black_list_dict,
                                                          current_node_info=current_node_info,
                                                          is_human_name=is_human_name, prev_node=prev_node,
@@ -225,6 +261,8 @@ class Utility(object):
         aliases = kwargs["_aliases"]
         descriptions = kwargs["_descriptions"]
         _pagerank = kwargs["_pagerank"]
+        wikitable_anchor_text = kwargs["_wikitable_anchor_text"]
+        wikipedia_anchor_text = kwargs["_wikipedia_anchor_text"]
         black_list_dict = kwargs["black_list_dict"]
         current_node_info = kwargs["current_node_info"]
         # is_human_name = kwargs["is_human_name"]
@@ -238,6 +276,8 @@ class Utility(object):
         _labels = {}
         _aliases = {}
         _descriptions = {}
+        _wikitable_anchor_text = {}
+        _wikipedia_anchor_text = {}
 
         for k in labels:
             _labels[k] = list(labels[k])
@@ -248,7 +288,14 @@ class Utility(object):
         for k in descriptions:
             _descriptions[k] = list(descriptions[k])
 
-        if len(_labels) > 0 or len(_aliases) > 0 or len(_descriptions) > 0:
+        for k in wikitable_anchor_text:
+            _wikitable_anchor_text[k] = list(wikitable_anchor_text[k])
+
+        for k in wikipedia_anchor_text:
+            _wikipedia_anchor_text[k] = list(wikipedia_anchor_text[k])
+        
+
+        if len(_labels) > 0 or len(_aliases) > 0 or len(_descriptions) > 0 or len(_wikitable_anchor_text) > 0 or len(_wikipedia_anchor_text) > 0:
             if not Utility.check_in_black_list(black_list_dict, current_node_info):
                 # # we need to add acronym for human names
                 # if is_human_name:
@@ -259,7 +306,9 @@ class Utility(object):
                      'labels': _labels,
                      'aliases': _aliases,
                      'pagerank': _pagerank,
-                     'descriptions': _descriptions
+                     'descriptions': _descriptions,
+                     'wikitable_anchor_text': _wikitable_anchor_text,
+                     'wikipedia_anchor_text': _wikipedia_anchor_text
                      }
                 if extra_info:
                     _['edges'] = _edges
