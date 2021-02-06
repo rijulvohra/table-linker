@@ -36,6 +36,15 @@ def add_arguments(parser):
 
     parser.add_argument('--wikipedia-anchor-field', action='store', type=str, dest='wikipedia_anchor_field', default=None,
                         help='the name of property which has pagerank for the node1')
+    
+    parser.add_argument('--abbreviated-name', action='store', type=str, dest='abbreviated_name', default=None,
+                        help='the name of property which has pagerank for the node1')
+    
+    parser.add_argument('--redirect-field', action='store', type=str, dest='redirects_field', default=None,
+                        help='the name of property which has redirect for the node1')
+
+    parser.add_argument('--external-id', action='store', type=str, dest='external_id', default=None,
+                        help='the name of datatype which has external for the node1')
 
     parser.add_argument('--mapping-file', action='store', dest='mapping_file_path', required=True,
                         help='path where a mapping file for the ES index will be output')
@@ -73,6 +82,9 @@ def run(**kwargs):
                                          pagerank_fields=kwargs['pagerank_properties'],
                                          wikitable_anchor_field=kwargs['wikitable_anchor_field'],
                                          wikipedia_anchor_field=kwargs['wikipedia_anchor_field'],
+                                         abbreviated_name=kwargs['abbreviated_name'],
+                                         redirects_field=kwargs['redirects_field'],
+                                         external_id=kwargs['external_id'],
                                          black_list_file_path=kwargs['blacklist_file_path'],
                                          extra_info=kwargs['extra_information'],
                                          description_properties=kwargs['description_properties'],

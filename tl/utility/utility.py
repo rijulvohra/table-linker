@@ -21,6 +21,9 @@ class Utility(object):
                                  alias_fields=None, pagerank_fields=None,
                                  wikitable_anchor_field=None,
                                  wikipedia_anchor_field=None,
+                                 abbreviated_name=None,
+                                 redirects_field = None,
+                                 external_id = None,
                                  black_list_file_path=None,
                                  extra_info=False,
                                  add_text=False,
@@ -65,13 +68,27 @@ class Utility(object):
         descriptions = description_properties.split(',') if description_properties else []
         wikitable_anchor_text = wikitable_anchor_field.split(',') if wikitable_anchor_field else []
         wikipedia_anchor_text = wikipedia_anchor_field.split(',') if wikipedia_anchor_field else []
+        abbreviated_name = abbreviated_name.split(',') if abbreviated_name else []
+        redirect_text = redirects_field.split(',') if redirects_field else []
+        external_id_text = external_id.split(',') if external_id else []
+
         mapping_parameter_dict['str_fields_need_index'] = ['id', 'labels']
+        filter_lang = ['en','es','de','fr','es','it','nl','pl','pt','sv']
         if len(aliases):
             mapping_parameter_dict['str_fields_need_index'].append('aliases')
         if len(pagerank):
             mapping_parameter_dict['float_fields_need_index'].append('pagerank')
         if len(descriptions):
             mapping_parameter_dict['str_fields_need_index'].append('descriptions')
+        if len(wikitable_anchor_text):
+            mapping_parameter_dict['str_fields_need_index'].append('wikitable_anchor_text')
+        if len(wikipedia_anchor_text):
+            mapping_parameter_dict['str_fields_need_index'].append('wikipedia_anchor_text')
+        if len(abbreviated_name):
+            mapping_parameter_dict['str_fields_need_index'].append('abbreviated_name')
+        if len(redirect_text):
+            mapping_parameter_dict['str_fields_need_index'].append('redirect_text')
+        
 
         human_nodes_set = {"Q15632617", "Q95074", "Q5"}
         skip_edges = set(labels + aliases)
@@ -91,6 +108,9 @@ class Utility(object):
         _descriptions = dict()
         _wikitable_anchor_text = dict()
         _wikipedia_anchor_text = dict()
+        _abbreviated_name = dict()
+        _redirect_text = dict()
+        _external_id_text = dict()
         all_langs = set()
         lang = 'en'
 
@@ -106,8 +126,6 @@ class Utility(object):
             st = time.time()
             for line in kgtk_file:
                 i += 1
-                if i%100000 == 0:
-                    print("Time Taken to process {} lines is {}".format(i,time.time() - st))
                 if i % 1000000 == 0:
                     print('Processed {} lines...'.format(i))
                 if isinstance(line, bytes):
@@ -120,7 +138,8 @@ class Utility(object):
                         'id': cols.index('id'),
                         'node1': cols.index('node1'),
                         'label': cols.index('label'),
-                        'node2': cols.index('node2')
+                        'node2': cols.index('node2'),
+                        'datatype': cols.index('node2;wikidatatype')
                     }
 
                 # if line.startswith('Q'):
@@ -129,6 +148,7 @@ class Utility(object):
                     node1_id = column_header_dict['node1']
                     label_id = column_header_dict['label']
                     node2_id = column_header_dict['node2']
+                    datatype_id = column_header_dict['datatype']
                     node1 = vals[node1_id]
                     if '-' not in node1 and node1.startswith('Q'):  # ignore qualifiers and properties
                         if prev_node is None:
@@ -138,6 +158,9 @@ class Utility(object):
                                                                          _pagerank=_pagerank,
                                                                          _wikitable_anchor_text = _wikitable_anchor_text,
                                                                          _wikipedia_anchor_text = _wikipedia_anchor_text,
+                                                                         _abbreviated_name = _abbreviated_name,
+                                                                         _redirect_text = _redirect_text,
+                                                                         _external_id_text = _external_id_text,
                                                                          black_list_dict=black_list_dict,
                                                                          current_node_info=current_node_info,
                                                                          is_human_name=is_human_name,
@@ -152,11 +175,17 @@ class Utility(object):
                             _labels = dict()
                             _aliases = dict()
                             _descriptions = dict()
+                            _wikitable_anchor_text = dict()
+                            _wikipedia_anchor_text = dict()
+                            _abbreviated_name = dict()
+                            _redirect_text = dict()
+                            _external_id_text = dict()
                             _pagerank = 0.0
                             current_node_info = defaultdict(set)
                             prev_node = node1
                             is_human_name = False
                             lang = 'en'
+                            
 
                         current_node_info[vals[label_id]].add(str(vals[node2_id]))
                         if vals[label_id] in labels:
@@ -164,48 +193,56 @@ class Utility(object):
                                 tmp_val, lang = Utility.separate_language_text_tag(vals[node2_id])
                             else:
                                 tmp_val = Utility.remove_language_tag(vals[node2_id])
-                            if lang not in _labels:
-                                _labels[lang] = set()
-                                all_langs.add(lang)
-
-                            if tmp_val.strip() != '':
-                                _labels[lang].add(tmp_val)
-                        elif vals[label_id] in aliases or vals[label_id] == 'abbreviated_name':
+                            if lang in filter_lang:
+                                if lang not in _labels:
+                                    _labels[lang] = set()
+                                    all_langs.add(lang)
+                                
+                                if tmp_val.strip() != '':
+                                    _labels[lang].add(tmp_val)
+                        
+                        elif vals[label_id] in aliases:
                             if separate_languages:
                                 tmp_val, lang = Utility.separate_language_text_tag(vals[node2_id])
                             else:
                                 tmp_val = Utility.remove_language_tag(vals[node2_id])
-                            if lang not in _aliases:
-                                _aliases[lang] = set()
-                                all_langs.add(lang)
-
-                            if tmp_val.strip() != '':
-                                _aliases[lang].add(tmp_val)
+                            if lang in filter_lang:
+                                if lang not in _aliases:
+                                    _aliases[lang] = set()
+                                    all_langs.add(lang)
+                                
+                                if tmp_val.strip() != '':
+                                    _aliases[lang].add(tmp_val)
+                        
                         elif vals[label_id] in pagerank:
                             tmp_val = Utility.to_float(vals[node2_id])
                             if tmp_val:
                                 _pagerank = tmp_val
+                        
                         elif vals[label_id] in descriptions:
                             if separate_languages:
                                 tmp_val, lang = Utility.separate_language_text_tag(vals[node2_id])
                             else:
                                 tmp_val = Utility.remove_language_tag(vals[node2_id])
-                            if lang not in _descriptions:
-                                _descriptions[lang] = set()
-                                all_langs.add(lang)
-                            if tmp_val.strip() != '':
-                                _descriptions[lang].add(tmp_val)
+                            if lang in filter_lang:
+                                if lang not in _descriptions:
+                                    _descriptions[lang] = set()
+                                    all_langs.add(lang)
+                                
+                                if tmp_val.strip() != '':
+                                    _descriptions[lang].add(tmp_val)
 
                         elif vals[label_id] in wikitable_anchor_text:
                             if separate_languages:
                                 tmp_val, lang = Utility.separate_language_text_tag(vals[node2_id])
                             else:
                                 tmp_val = Utility.remove_language_tag(vals[node2_id])
-                            if lang not in _wikitable_anchor_text:
-                                _wikitable_anchor_text[lang] = set()
-                                all_langs.add(lang)
-                            if tmp_val.strip() != '':
-                                _wikitable_anchor_text[lang].add(tmp_val)
+                            if lang in filter_lang:
+                                if lang not in _wikitable_anchor_text:
+                                    _wikitable_anchor_text[lang] = set()
+                                    all_langs.add(lang)
+                                if tmp_val.strip() != '':
+                                    _wikitable_anchor_text[lang].add(tmp_val)
 
                         elif vals[label_id] in wikipedia_anchor_text:
                             if separate_languages:
@@ -217,6 +254,38 @@ class Utility(object):
                                 all_langs.add(lang)
                             if tmp_val.strip() != '':
                                 _wikipedia_anchor_text[lang].add(tmp_val)
+                        
+                        elif vals[label_id] in abbreviated_name:
+                            if separate_languages:
+                                tmp_val, lang = Utility.separate_language_text_tag(vals[node2_id])
+                            else:
+                                tmp_val = Utility.remove_language_tag(vals[node2_id])
+                            if lang not in _abbreviated_name:
+                                _abbreviated_name[lang] = set()
+                                all_langs.add(lang)
+                            if tmp_val.strip() != '':
+                                _abbreviated_name[lang].add(tmp_val)
+
+                        elif vals[label_id] in redirect_text:
+                            if separate_languages:
+                                tmp_val, lang = Utility.separate_language_text_tag(vals[node2_id])
+                            else:
+                                tmp_val = Utility.remove_language_tag(vals[node2_id])
+                            if lang not in _redirect_text:
+                                _abbreviated_name[lang] = set()
+                                all_langs.add(lang)
+                            if tmp_val.strip() != '':
+                                _abbreviated_name[lang].add(tmp_val)
+                        
+                        elif vals[datatype_id] in external_id_text:
+                            prop_number = vals[label_id]
+                            node2_val = vals[node2_id].replace('\\','').replace('"','').replace("'","")
+                            if 'identifiers' in _external_id_text:
+                                val2append = str(prop_number) + ';' + str(node2_val)
+                                _external_id_text['identifiers'].append(val2append)
+                            else:
+                                val2append = str(prop_number) + ';' + str(node2_val)
+                                _external_id_text['identifiers'] = [val2append]
 
                         # if it is human
                         if vals[node2_id] in human_nodes_set:
@@ -226,6 +295,9 @@ class Utility(object):
             skipped_node_count = Utility._write_one_node(_labels=_labels, _aliases=_aliases, _pagerank=_pagerank,
                                                          _wikitable_anchor_text = _wikitable_anchor_text,
                                                          _wikipedia_anchor_text = _wikipedia_anchor_text,
+                                                         _abbreviated_name = _abbreviated_name,
+                                                         _redirect_text = _redirect_text,
+                                                         _external_id_text = _external_id_text,
                                                          black_list_dict=black_list_dict,
                                                          current_node_info=current_node_info,
                                                          is_human_name=is_human_name, prev_node=prev_node,
@@ -263,6 +335,9 @@ class Utility(object):
         _pagerank = kwargs["_pagerank"]
         wikitable_anchor_text = kwargs["_wikitable_anchor_text"]
         wikipedia_anchor_text = kwargs["_wikipedia_anchor_text"]
+        abbreviated_name = kwargs['_abbreviated_name']
+        redirect_text = kwargs['_redirect_text']
+        external_id_text = kwargs['_external_id_text']
         black_list_dict = kwargs["black_list_dict"]
         current_node_info = kwargs["current_node_info"]
         # is_human_name = kwargs["is_human_name"]
@@ -278,6 +353,9 @@ class Utility(object):
         _descriptions = {}
         _wikitable_anchor_text = {}
         _wikipedia_anchor_text = {}
+        _abbreviated_name = {}
+        _redirect_text = {}
+        _external_id_text = {}
 
         for k in labels:
             _labels[k] = list(labels[k])
@@ -294,8 +372,18 @@ class Utility(object):
         for k in wikipedia_anchor_text:
             _wikipedia_anchor_text[k] = list(wikipedia_anchor_text[k])
         
+        for k in abbreviated_name:
+            _abbreviated_name[k] = list(abbreviated_name[k])
+        
+        for k in redirect_text:
+            _redirect_text[k] = list(redirect_text[k])
 
-        if len(_labels) > 0 or len(_aliases) > 0 or len(_descriptions) > 0 or len(_wikitable_anchor_text) > 0 or len(_wikipedia_anchor_text) > 0:
+        for k in external_id_text:
+            _external_id_text[k] = list(external_id_text[k])
+            
+
+        if len(_labels) > 0 or len(_aliases) > 0 or len(_descriptions) > 0 or len(_wikitable_anchor_text) > 0 or \
+            len(_wikipedia_anchor_text) > 0 or len(_abbreviated_name) > 0 or len(_redirect_text) > 0 or len(_external_id_text) > 0:
             if not Utility.check_in_black_list(black_list_dict, current_node_info):
                 # # we need to add acronym for human names
                 # if is_human_name:
@@ -308,8 +396,12 @@ class Utility(object):
                      'pagerank': _pagerank,
                      'descriptions': _descriptions,
                      'wikitable_anchor_text': _wikitable_anchor_text,
-                     'wikipedia_anchor_text': _wikipedia_anchor_text
+                     'wikipedia_anchor_text': _wikipedia_anchor_text,
+                     'abbreviated_name': _abbreviated_name,
+                     'redirect_text': _redirect_text,
+                     'external_id': _external_id_text
                      }
+                #print(_)
                 if extra_info:
                     _['edges'] = _edges
 
@@ -327,11 +419,13 @@ class Utility(object):
 
     @staticmethod
     def separate_language_text_tag(label_str):
+        filter_lang = ['en','es','de','fr','es','it','nl','pl','pt','sv']
+        #print(label_str)
         if len(label_str) == 0:
             return "", "en"
         if "@" in label_str:
             res = label_str.split("@")
-            text_string = "@".join(res[:-1]).replace('"', "").replace("'", "")
+            text_string = "@".join(res[:-1]).replace('\\','').replace('"','').replace("'","")
             lang = res[-1].replace('"', '').replace("'", "")
         else:
             text_string = label_str.replace('"', "").replace("'", "")
@@ -411,26 +505,108 @@ class Utility(object):
                         # one copy to field for different languages
                         # one  copy to field for all languages
 
-                        if str_field in copy_to_fields:
+                        if str_field in copy_to_fields and str_field != 'wikitable_anchor_text' and str_field != 'wikipedia_anchor_text':
+
+
                             properties_dict[str_field]["properties"][lang]["copy_to"] = [
                                 f"all_labels.{lang}",
                                 "all_labels_aliases"
                             ]
                             if "all_labels" not in properties_dict:
                                 properties_dict["all_labels"] = {"properties": {}}
-                            properties_dict["all_labels"]["properties"][lang] = {
-                                "type": "text",
-                                "fields": {
-                                    "keyword": {
-                                        "type": "keyword",
-                                        "ignore_above": 256
-                                    },
-                                    "keyword_lower": {
-                                        "type": "keyword",
-                                        "normalizer": "lowercase_normalizer"
+
+                            if lang != 'en':
+                                properties_dict["all_labels"]["properties"][lang] = {
+                                    "type": "text",
+                                    "fields": {
+                                        "keyword": {
+                                            "type": "keyword",
+                                            "ignore_above": 256
+                                            },
+                                        "keyword_lower": {
+                                            "type": "keyword",
+                                            "normalizer": "lowercase_normalizer"
+                                            }
+                                        }
                                     }
-                                }
-                            }
+                            
+                            if lang == 'en':
+                                properties_dict["all_labels"]["properties"][lang] = {
+                                    "type": "text",
+                                    "fields": {
+                                        "completion": {
+                                            "type": "completion",
+                                            "analyzer": "simple",
+                                            "preserve_separators": True,
+                                            "preserve_position_increments": True,
+                                            "max_input_length": 50
+                                            },
+                                        "keyword": {
+                                            "type": "keyword",
+                                            "ignore_above": 256
+                                            },
+                                        "keyword_lower": {
+                                            "type": "keyword",
+                                            "normalizer": "lowercase_normalizer"
+                                            },
+                                        "ngram": {
+                                            "type": "text",
+                                            "analyzer": "edge_ngram_analyzer",
+                                            "search_analyzer": "edge_ngram_search_analyzer"
+                                            }
+                                        }
+                                    }
+                        
+                        if str_field in copy_to_fields and (str_field == 'wikitable_anchor_text' or str_field == 'wikipedia_anchor_text'):
+                            properties_dict[str_field]['properties'][lang]["copy_to"] = [
+                                f"anchor_text.{lang}",
+                            ]
+                            
+                            if "anchor_text" not in properties_dict:
+                                properties_dict["anchor_text"] = {"properties":{}}
+                            
+                            if lang != 'en':
+                                properties_dict["anchor_text"]["properties"][lang] = {
+                                    "type": "text",
+                                    "fields": {
+                                        "keyword": {
+                                            "type": "keyword",
+                                            "ignore_above": 256
+                                            },
+                                        "keyword_lower": {
+                                            "type": "keyword",
+                                            "normalizer": "lowercase_normalizer"
+                                            }
+                                        }
+                                    }
+                            
+                            if lang == 'en':
+                                properties_dict["anchor_text"]["properties"][lang] = {
+                                    "type": "text",
+                                    "fields": {
+                                        "completion": {
+                                            "type": "completion",
+                                            "analyzer": "simple",
+                                            "preserve_separators": True,
+                                            "preserve_position_increments": True,
+                                            "max_input_length": 50
+                                            },
+                                        "keyword": {
+                                            "type": "keyword",
+                                            "ignore_above": 256
+                                            },
+                                        "keyword_lower": {
+                                            "type": "keyword",
+                                            "normalizer": "lowercase_normalizer"
+                                            },
+                                        "ngram": {
+                                            "type": "text",
+                                            "analyzer": "edge_ngram_analyzer",
+                                            "search_analyzer": "edge_ngram_search_analyzer"
+                                            }
+                                        }
+                                    }
+
         if "all_labels_aliases" not in properties_dict:
             properties_dict["all_labels_aliases"] = {
                 "type": "text",
@@ -480,6 +656,27 @@ class Utility(object):
                                     ],
                                     "type": "custom"
                                 }
+                            },
+                            "analyzer": {
+                                "edge_ngram_analyzer": {
+                                    "filter": [
+                                        "lowercase"
+                                    ],
+                                    "tokenizer":"edge_ngram_tokenizer"    
+                                },
+                                "edge_ngram_search_analyzer":{
+                                    "tokenizer":"lowercase"
+                                }
+                            },
+                            "tokenizer":{
+                                "edge_ngram_tokenizer": {
+                                    "token_chars": [
+                                        "letter"
+                                    ],
+                                    "min_gram": "2",
+                                    "type": "edge_ngram",
+                                    "max_gram": "10"
+                                }
                             }
                         }
                     }
@@ -502,6 +699,27 @@ class Utility(object):
                                         "lowercase"
                                     ],
                                     "type": "custom"
+                                }
+                            },
+                            "analyzer": {
+                                "edge_ngram_analyzer": {
+                                    "filter": [
+                                        "lowercase"
+                                    ],
+                                    "tokenizer":"edge_ngram_tokenizer"    
+                                },
+                                "edge_ngram_search_analyzer":{
+                                    "tokenizer":"lowercase"
+                                }
+                            },
+                            "tokenizer":{
+                                "edge_ngram_tokenizer": {
+                                    "token_chars": [
+                                        "letter"
+                                    ],
+                                    "min_gram": "2",
+                                    "type": "edge_ngram",
+                                    "max_gram": "10"
                                 }
                             }
                         }
