@@ -138,8 +138,7 @@ class Utility(object):
                         'id': cols.index('id'),
                         'node1': cols.index('node1'),
                         'label': cols.index('label'),
-                        'node2': cols.index('node2'),
-                        'datatype': cols.index('node2;wikidatatype')
+                        'node2': cols.index('node2')
                     }
 
                 # if line.startswith('Q'):
@@ -148,7 +147,7 @@ class Utility(object):
                     node1_id = column_header_dict['node1']
                     label_id = column_header_dict['label']
                     node2_id = column_header_dict['node2']
-                    datatype_id = column_header_dict['datatype']
+                   # datatype_id = column_header_dict['datatype']
                     node1 = vals[node1_id]
                     if '-' not in node1 and node1.startswith('Q'):  # ignore qualifiers and properties
                         if prev_node is None:
@@ -272,12 +271,12 @@ class Utility(object):
                             else:
                                 tmp_val = Utility.remove_language_tag(vals[node2_id])
                             if lang not in _redirect_text:
-                                _abbreviated_name[lang] = set()
+                                _redirect_text[lang] = set()
                                 all_langs.add(lang)
                             if tmp_val.strip() != '':
-                                _abbreviated_name[lang].add(tmp_val)
+                                _redirect_text[lang].add(tmp_val)
                         
-                        elif vals[datatype_id] in external_id_text:
+                        '''elif vals[datatype_id] in external_id_text:
                             prop_number = vals[label_id]
                             node2_val = vals[node2_id].replace('\\','').replace('"','').replace("'","")
                             if 'identifiers' in _external_id_text:
@@ -285,7 +284,7 @@ class Utility(object):
                                 _external_id_text['identifiers'].append(val2append)
                             else:
                                 val2append = str(prop_number) + ';' + str(node2_val)
-                                _external_id_text['identifiers'] = [val2append]
+                                _external_id_text['identifiers'] = [val2append]'''
 
                         # if it is human
                         if vals[node2_id] in human_nodes_set:
@@ -378,12 +377,12 @@ class Utility(object):
         for k in redirect_text:
             _redirect_text[k] = list(redirect_text[k])
 
-        for k in external_id_text:
-            _external_id_text[k] = list(external_id_text[k])
+        '''for k in external_id_text:
+            _external_id_text[k] = list(external_id_text[k])'''
             
 
         if len(_labels) > 0 or len(_aliases) > 0 or len(_descriptions) > 0 or len(_wikitable_anchor_text) > 0 or \
-            len(_wikipedia_anchor_text) > 0 or len(_abbreviated_name) > 0 or len(_redirect_text) > 0 or len(_external_id_text) > 0:
+            len(_wikipedia_anchor_text) > 0 or len(_abbreviated_name) > 0 or len(_redirect_text) > 0:
             if not Utility.check_in_black_list(black_list_dict, current_node_info):
                 # # we need to add acronym for human names
                 # if is_human_name:
@@ -398,8 +397,7 @@ class Utility(object):
                      'wikitable_anchor_text': _wikitable_anchor_text,
                      'wikipedia_anchor_text': _wikipedia_anchor_text,
                      'abbreviated_name': _abbreviated_name,
-                     'redirect_text': _redirect_text,
-                     'external_id': _external_id_text
+                     'redirect_text': _redirect_text
                      }
                 #print(_)
                 if extra_info:
