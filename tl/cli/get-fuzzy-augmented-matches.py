@@ -1,4 +1,5 @@
 import sys
+import os
 import argparse
 import traceback
 import tl.exceptions
@@ -41,6 +42,9 @@ def add_arguments(parser):
                         help='location where the auxiliary files for auxiliary fields will be stored.'
                              'If this option is specified then `--auxiliary-fields` must also be specified.')
 
+    parser.add_argument('--auxiliary-filename', action='store', type=str, dest='auxiliary_filename', default=None,
+                       help='filename')
+
     parser.add_argument('input_file',nargs='?',type=argparse.FileType('r'),default=sys.stdin)
 
 
@@ -58,6 +62,7 @@ def run(**kwargs):
 
         if auxiliary_fields is not None:
             auxiliary_fields = auxiliary_fields.split(",")
+            auxiliary_filename = kwargs['auxiliary_filename']
         df = pd.read_csv(kwargs['input_file'],dtype=object)
         em = FuzzyAugmented(es_url=kwargs['url'], es_index=kwargs['index'], es_user=kwargs['user'],
                             es_pass=kwargs['password'], properties=kwargs['properties'],
@@ -65,7 +70,8 @@ def run(**kwargs):
         odf = em.get_matches(column=kwargs['column'],
                              size=kwargs['size'],df=df,
                              auxiliary_fields=auxiliary_fields,
-                             auxiliary_folder=auxiliary_folder)
+                             auxiliary_folder=auxiliary_folder,
+                             auxiliary_filename=auxiliary_filename)
         odf.to_csv(sys.stdout, index=False)
 
     except:

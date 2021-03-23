@@ -11,7 +11,7 @@ class FuzzyAugmented(object):
         self.utility = Utility(self.es, output_column_name)
 
     def get_matches(self,column, size=100, file_path=None,
-                    df=None, auxiliary_fields: List[str] = None, auxiliary_folder: str = None):
+                    df=None, auxiliary_fields: List[str] = None, auxiliary_folder: str = None, auxiliary_filename: str = None):
         """
         Used the ElasticSearch which has the labels, aliases, wikipedia/wikitable anchor text, redirect text
         :param column: the column used to retrieve the candidates
@@ -37,4 +37,5 @@ class FuzzyAugmented(object):
                                                  'fuzzy-augmented',
                                                  lower_case=False,
                                                  auxiliary_fields=auxiliary_fields,
-                                                 auxiliary_folder=auxiliary_folder)
+                                                 auxiliary_folder=auxiliary_folder,
+                                                 auxiliary_filename=auxiliary_filename)

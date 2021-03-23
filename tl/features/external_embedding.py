@@ -2,6 +2,7 @@ import json
 import math
 import sys
 import typing
+import ast
 
 import numpy as np
 import requests
@@ -49,11 +50,13 @@ class EmbeddingVector:
 
     def _load_vectors_from_file(self, embedding_file, qnodes):
         with open(embedding_file, 'rt') as fd:
-            for line in fd:
-                fields = line.strip().split('\t')
-                qnode = fields[0]
-                if qnode in qnodes:
-                    self.vectors_map[qnode] = np.asarray(list(map(float, fields[1:])))
+            for i,line in enumerate(fd):
+                if i > 0:
+                    fields = line.strip().split('\t')
+                    qnode = fields[0]
+                    vector_list = ast.literal_eval(fields[1])
+                    if qnode in qnodes:
+                        self.vectors_map[qnode] = np.asarray(list(map(float, vector_list)))
 
     def _save_new_to_file(self, embedding_file, new_qnodes):
         with open(embedding_file, 'at') as fd:

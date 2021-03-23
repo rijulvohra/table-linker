@@ -13,7 +13,7 @@ class Utility(object):
         self.score_column_name = output_column_name
 
     def create_candidates_df(self, df, column, size, properties, method, lower_case=False, auxiliary_fields=None,
-                             auxiliary_folder=None):
+                             auxiliary_folder=None, auxiliary_filename=None):
         properties = [_.strip() for _ in properties.split(',')]
         candidates_format = list()
         df_columns = df.columns
@@ -24,7 +24,7 @@ class Utility(object):
                                                                                    properties, method, lower_case,
                                                                                    auxiliary_fields=auxiliary_fields)
 
-            self.write_auxiliary_files(auxiliary_folder, all_candidates_aux_dict, auxiliary_fields)
+            self.write_auxiliary_files(auxiliary_folder, all_candidates_aux_dict, auxiliary_fields, auxiliary_filename)
             return pd.DataFrame(candidates_format)
 
         elif self.ffv.is_candidates_file(df):
@@ -42,7 +42,7 @@ class Utility(object):
                 all_candidates_aux_dict = {**all_candidates_aux_dict, **candidates_aux_dict}
 
                 candidates_format.extend(_candidates_format)
-            self.write_auxiliary_files(auxiliary_folder, all_candidates_aux_dict, auxiliary_fields)
+            self.write_auxiliary_files(auxiliary_folder, all_candidates_aux_dict, auxiliary_fields, auxiliary_filename)
             return pd.concat([df, pd.DataFrame(candidates_format)])
 
         else:
@@ -138,7 +138,7 @@ class Utility(object):
                 candidates_format.append(cf_dict)
         return candidates_format, candidate_aux_dict
 
-    def write_auxiliary_files(self, auxiliary_folder, all_candidates_aux_dict, auxiliary_fields):
+    def write_auxiliary_files(self, auxiliary_folder, all_candidates_aux_dict, auxiliary_fields, auxiliary_filename):
         _ = {}
         if auxiliary_fields is not None:
             for aux_field in auxiliary_fields:
@@ -155,4 +155,4 @@ class Utility(object):
 
             for key in _:
                 df = pd.DataFrame(_[key])
-                df.to_csv(f"{auxiliary_folder}/{key}.tsv", sep='\t', index=False)
+                df.to_csv(f"{auxiliary_folder}/{auxiliary_filename}_{key}.tsv", sep='\t', index=False)
