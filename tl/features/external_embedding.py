@@ -2,10 +2,12 @@ import json
 import math
 import sys
 import typing
+import ast
 
 import numpy as np
 import requests
 import pandas as pd
+import random
 
 from collections import defaultdict
 from pathlib import Path
@@ -50,10 +52,16 @@ class EmbeddingVector:
     def _load_vectors_from_file(self, embedding_file, qnodes):
         with open(embedding_file, 'rt') as fd:
             for line in fd:
+                # fields = line.strip().split('\t')
+                # qnode = fields[0]
+                # if qnode in qnodes:
+                #     self.vectors_map[qnode] = np.asarray(list(map(float,fields[1:])))
+
                 if 'qnode' not in line:
                     fields = line.strip().split('\t')
                     qnode = fields[0]
-                    embeddings = [float(x) for x in fields[1].split(",")]
+                    embedding_list = ast.literal_eval(fields[1])
+                    embeddings = [float(x) for x in embedding_list]
                     if qnode in qnodes:
                         # self.vectors_map[qnode] = np.asarray(list(map(float, fields[1:])))
                         self.vectors_map[qnode] = np.asarray(embeddings)
@@ -182,19 +190,50 @@ class EmbeddingVector:
     def _centroid_of_singletons(self) -> bool:
 
         # Use only results from exact-match
-        data = self.loaded_file[self.loaded_file['method'] == 'exact-match']
+        self.loaded_file['evaluation_label'] = self.loaded_file['evaluation_label'].astype('int32')
+        print(self.loaded_file['evaluation_label'].dtype,file=sys.stderr)
+        data = self.loaded_file[(self.loaded_file['method'] == 'exact-match')&(self.loaded_file['evaluation_label']==1)]
+        print(data.shape,file=sys.stderr)
 
         # Find singleton ids, i.e. ids from candidation generation sets of size one
-        singleton_ids = []
-        for ((col, row), group) in data.groupby(['column', 'row']):
-            ids = group[self.input_column_name].unique().tolist()
-            if np.nan in ids:
-                ids.remove(np.nan)
-            if len(ids) == 1:
-                singleton_ids.append(ids[0])
+        if data.shape[0] != 0:
+            singleton_ids = []
+            for ((col, row), group) in data.groupby(['column', 'row']):
+                ids = group[self.input_column_name].unique().tolist()
+                if np.nan in ids:
+                    ids.remove(np.nan)
+                if len(ids) == 1:
+                    singleton_ids.append(ids[0])
+            # if not singleton_ids:
+            #     return False
+        
+        else:
+            data = self.loaded_file[self.loaded_file['evaluation_label'] == 1]
+            k = random.randint(20,30)
+            if data.shape[0] > k:
+                data = data.sample(k)
+            singleton_ids = []
+            for ((col, row), group) in data.groupby(['column', 'row']):
+                ids = group[self.input_column_name].unique().tolist()
+                if np.nan in ids:
+                    ids.remove(np.nan)
+                if len(ids) == 1:
+                    singleton_ids.append(ids[0])
+            # if not singleton_ids:
+            #     return False
 
-        if not singleton_ids:
-            return False
+        # if not singleton_ids:
+        #     return False
+        # singleton_ids = []
+        # for ((col, row), group) in data.groupby(['column', 'row']):
+        #     ids = group[self.input_column_name].unique().tolist()
+        #     if np.nan in ids:
+        #         ids.remove(np.nan)
+        #     if len(ids) == 1:
+        #         singleton_ids.append(ids[0])
+
+        # if not singleton_ids:
+        #     return False
 
         missing_embedding_ids = []
         vectors = []
