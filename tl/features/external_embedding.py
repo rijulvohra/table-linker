@@ -197,6 +197,7 @@ class EmbeddingVector:
 
         # Find singleton ids, i.e. ids from candidation generation sets of size one
         if data.shape[0] != 0:
+            print('finding singletons')
             singleton_ids = []
             for ((col, row), group) in data.groupby(['column', 'row']):
                 ids = group[self.input_column_name].unique().tolist()
@@ -204,10 +205,12 @@ class EmbeddingVector:
                     ids.remove(np.nan)
                 if len(ids) == 1:
                     singleton_ids.append(ids[0])
+            print('Number of Singletons is:', len(singleton_ids))
             # if not singleton_ids:
             #     return False
         
         else:
+            print('entered else block')
             data = self.loaded_file[self.loaded_file['evaluation_label'] == 1]
             k = random.randint(20,30)
             if data.shape[0] > k:
@@ -244,6 +247,7 @@ class EmbeddingVector:
                 vectors.append(self.vectors_map[kg_id])
 
         if len(missing_embedding_ids):
+            print('y')
             print(f'_centroid_of_singletons: Missing {len(missing_embedding_ids)} of {len(singleton_ids)}',
                   file=sys.stderr)
 
