@@ -51,7 +51,7 @@ def run(**kwargs):
         df = pd.read_csv(kwargs['input_file'], dtype=object)
         color_render = ColorRenderUnit(df, kwargs["sort_by_gt"], kwargs["gt_score_column"], kwargs["output_uri"])
         color_render.add_color_by_score(kwargs['column'], k=kwargs['k'], use_all_columns=kwargs["use_all_columns"])
-        color_render.add_border()
+        #color_render.add_border()
         color_render.save_to_file()
 
     except:
